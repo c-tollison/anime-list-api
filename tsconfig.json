@@ -21,6 +21,8 @@
         "strict": true,
         "noUncheckedIndexedAccess": true,
         "noPropertyAccessFromIndexSignature": true,
+        // Off due to entity definitions for type orm
+        "strictPropertyInitialization": false,
         "strictNullChecks": true,
         "noImplicitAny": true,
         "strictBindCallApply": true,

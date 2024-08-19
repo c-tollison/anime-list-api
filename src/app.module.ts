@@ -1,7 +1,20 @@
-import { Module } from '@nestjs/common';
-import { AnimeModule } from './anime/anime.module';
+import { Module } from "@nestjs/common";
+import { AnimeModule } from "./anime/anime.module";
+import { TypeOrmModule } from "@nestjs/typeorm";
 
 @Module({
-    imports: [AnimeModule],
+    imports: [
+        TypeOrmModule.forRoot({
+            type: "postgres",
+            host: "localhost",
+            port: 5432,
+            password: "",
+            username: "catolli",
+            entities: [],
+            database: "catolli",
+            logging: true,
+        }),
+        AnimeModule,
+    ],
 })
 export class AppModule {}
