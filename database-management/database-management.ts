@@ -156,14 +156,26 @@ async function filterMigrations(client: DatabaseManager, migrations: string[], t
     });
 }
 
+async function runMigration(
+    client: DatabaseManager,
+    migrationFolderName: string,
+    migrationType: MigrationType,
+): Promise<void> {
+    const fileConfig = await getFileConfig(migrationFolderName, migrationType);
+    const sql = readFileSync(
+        path.join(fileConfig.migrationFolder, fileConfig.migrationName, fileConfig.migrationTypeFile),
+        "utf-8",
+    );
+
+    await client.runMigration(fileConfig.migrationName, sql, migrationType);
+}
+
 async function databaseManagement() {
     const client = await getDatabaseManager();
     await client.connect();
 
     try {
         let action: UserActionType = null;
-        let fileConfig: FileConfig;
-        let sql: string;
 
         while (action !== UserAction.QUIT) {
             action = await getUserAction();
@@ -178,17 +190,7 @@ async function databaseManagement() {
                     migrations = await filterMigrations(client, migrations, MigrationType.MIGRATION);
                     migrationFolderName = await chooseMigration(migrations);
                     if (migrationFolderName) {
-                        fileConfig = await getFileConfig(migrationFolderName, MigrationType.MIGRATION);
-                        sql = readFileSync(
-                            path.join(
-                                fileConfig.migrationFolder,
-                                fileConfig.migrationName,
-                                fileConfig.migrationTypeFile,
-                            ),
-                            "utf-8",
-                        );
-
-                        await client.runMigration(fileConfig.migrationName, sql, MigrationType.MIGRATION);
+                        await runMigration(client, migrationFolderName, MigrationType.MIGRATION);
                     } else {
                         console.log("No migrations to run");
                     }
@@ -197,35 +199,15 @@ async function databaseManagement() {
                     migrations = await filterMigrations(client, migrations, MigrationType.ROLLBACK);
                     migrationFolderName = await chooseMigration(migrations);
                     if (migrationFolderName) {
-                        fileConfig = await getFileConfig(migrationFolderName, MigrationType.ROLLBACK);
-                        sql = readFileSync(
-                            path.join(
-                                fileConfig.migrationFolder,
-                                fileConfig.migrationName,
-                                fileConfig.migrationTypeFile,
-                            ),
-                            "utf-8",
-                        );
-
-                        await client.runMigration(fileConfig.migrationName, sql, MigrationType.ROLLBACK);
+                        await runMigration(client, migrationFolderName, MigrationType.ROLLBACK);
                     } else {
                         console.log("No migrations to run");
                     }
                     break;
                 case UserAction.RUN_ALL:
                     migrations = await filterMigrations(client, migrations, MigrationType.MIGRATION);
-                    for (const m of migrations) {
-                        fileConfig = await getFileConfig(m, MigrationType.MIGRATION);
-                        sql = readFileSync(
-                            path.join(
-                                fileConfig.migrationFolder,
-                                fileConfig.migrationName,
-                                fileConfig.migrationTypeFile,
-                            ),
-                            "utf-8",
-                        );
-
-                        await client.runMigration(fileConfig.migrationName, sql, MigrationType.MIGRATION);
+                    for (const migrationName of migrations) {
+                        await runMigration(client, migrationName, MigrationType.MIGRATION);
                     }
                     break;
                 case UserAction.QUIT:

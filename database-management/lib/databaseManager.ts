@@ -65,10 +65,6 @@ export class DatabaseManager {
         }
     }
 
-    public async getDiff() {
-        this.client;
-    }
-
     public async close() {
         await this.client.end();
     }
