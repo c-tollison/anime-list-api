@@ -1,12 +1,15 @@
 import { Client } from "pg";
 import { DatabaseConfig } from "./configReader";
-import { readFileSync } from "fs";
-import { MIGRATION_FILE_NAME, ROLLBACK_FILE_NAME } from "./config";
-import path from "path";
 
 export enum MigrationType {
     MIGRATION = "migration",
     ROLLBACK = "rollback",
+}
+
+export interface MigrationEntity {
+    id: number;
+    name: string;
+    applied_at: string;
 }
 
 export class DatabaseManager {
@@ -37,33 +40,28 @@ export class DatabaseManager {
         }
     }
 
-    public async runMigration(migration: string, type: MigrationType): Promise<void> {
+    public async query(queryString: string, queryArray?: (string | number | boolean)[]) {
         try {
-            const migrationsName = migration.split("/")[2];
-            const filePath = path.join(
-                migration,
-                type === MigrationType.MIGRATION ? MIGRATION_FILE_NAME : ROLLBACK_FILE_NAME,
-            );
-            const sql = readFileSync(filePath, "utf8");
-
-            await this.transaction(async () => {
-                await this.client.query(sql);
-                if (type === MigrationType.MIGRATION) {
-                    await this.client.query("INSERT INTO migrations (name) VALUES ($1)", [migrationsName]);
-                } else {
-                    await this.client.query("DELETE FROM migrations WHERE name = $1", [migrationsName]);
-                }
-            });
-
-            console.log("Successfully ran migration: ", filePath);
+            return await this.client.query(queryString, queryArray);
         } catch (error) {
-            throw new Error(`Failed to run migration ${migration}: ` + error);
+            throw new Error(`Failed to run query: ` + queryArray);
         }
     }
 
-    public async runAllMigrations(migrations: string[]) {
-        for (const migration of migrations) {
-            await this.runMigration(migration, MigrationType.MIGRATION);
+    public async runMigration(migrationName: string, sql: string, type: MigrationType): Promise<void> {
+        try {
+            await this.transaction(async () => {
+                await this.client.query(sql);
+                if (type === MigrationType.MIGRATION) {
+                    await this.query("INSERT INTO migrations (name) VALUES ($1)", [migrationName]);
+                } else {
+                    await this.query("DELETE FROM migrations WHERE name = $1", [migrationName]);
+                }
+            });
+
+            console.log("Successfully ran migration: ", migrationName);
+        } catch (error) {
+            throw new Error(`Failed to run migration ${migrationName}: ` + error);
         }
     }
 

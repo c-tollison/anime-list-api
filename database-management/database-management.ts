@@ -4,6 +4,7 @@ import { input, select } from "@inquirer/prompts";
 import { mkdir, readdir, writeFile } from "fs/promises";
 import path from "path";
 import { CONFIG_FILE_PATH, MIGRATIONS_FILE_PATH, MIGRATION_FILE_NAME, ROLLBACK_FILE_NAME } from "./lib/config";
+import { readFileSync } from "fs";
 
 enum UserAction {
     NEW = "new",
@@ -14,6 +15,12 @@ enum UserAction {
 }
 
 type UserActionType = UserAction | null;
+
+interface FileConfig {
+    migrationFolder: string;
+    migrationName: string;
+    migrationTypeFile: string;
+}
 
 async function getDatabaseManager(): Promise<DatabaseManager> {
     try {
@@ -26,7 +33,6 @@ async function getDatabaseManager(): Promise<DatabaseManager> {
 }
 
 async function getUserAction(): Promise<UserActionType> {
-    console.log();
     return await select({
         message: "Select an action",
         choices: [
@@ -107,23 +113,47 @@ async function readMigrations(): Promise<string[]> {
     }
 }
 
-async function chooseMigration(migrations: string[]): Promise<string> {
-    console.log();
+async function chooseMigration(migrations: string[]): Promise<string | null> {
     try {
-        const selection = await select({
-            message: "Choose migration: ",
-            choices: migrations.map((migration) => {
-                return {
-                    name: migration,
-                    value: migration,
-                };
-            }),
-        });
+        if (migrations.length > 0) {
+            const selection = await select({
+                message: "Choose migration: ",
+                choices: migrations.map((migration) => {
+                    return {
+                        name: migration,
+                        value: migration,
+                    };
+                }),
+            });
 
-        return `${MIGRATIONS_FILE_PATH}/${selection}`;
+            return selection;
+        }
+
+        return null;
     } catch (error) {
-        throw new Error("Failed to choose migration");
+        throw new Error("Failed to choose migration" + error);
     }
+}
+
+async function getFileConfig(migrationFolderName: string, type: MigrationType): Promise<FileConfig> {
+    return {
+        migrationFolder: MIGRATIONS_FILE_PATH,
+        migrationName: migrationFolderName,
+        migrationTypeFile: type === MigrationType.MIGRATION ? MIGRATION_FILE_NAME : ROLLBACK_FILE_NAME,
+    };
+}
+
+async function filterMigrations(client: DatabaseManager, migrations: string[], type: MigrationType): Promise<string[]> {
+    const queryResults = await client.query("SELECT * FROM migrations");
+    const ranMigrations: string[] = queryResults.rows.map((migration) => migration.name);
+
+    return migrations.filter((migration) => {
+        if (type === MigrationType.MIGRATION && !ranMigrations.includes(migration)) {
+            return migration;
+        } else if (type === MigrationType.ROLLBACK && ranMigrations.includes(migration)) {
+            return migration;
+        }
+    });
 }
 
 async function databaseManagement() {
@@ -132,24 +162,71 @@ async function databaseManagement() {
 
     try {
         let action: UserActionType = null;
+        let fileConfig: FileConfig;
+        let sql: string;
 
         while (action !== UserAction.QUIT) {
             action = await getUserAction();
-            const migrations = await readMigrations();
+            let migrationFolderName: string | null;
+            let migrations = await readMigrations();
 
             switch (action) {
                 case UserAction.NEW:
                     await createMigrationFile();
                     break;
                 case UserAction.RUN_ONE_MIGRATION:
+                    migrations = await filterMigrations(client, migrations, MigrationType.MIGRATION);
+                    migrationFolderName = await chooseMigration(migrations);
+                    if (migrationFolderName) {
+                        fileConfig = await getFileConfig(migrationFolderName, MigrationType.MIGRATION);
+                        sql = readFileSync(
+                            path.join(
+                                fileConfig.migrationFolder,
+                                fileConfig.migrationName,
+                                fileConfig.migrationTypeFile,
+                            ),
+                            "utf-8",
+                        );
+
+                        await client.runMigration(fileConfig.migrationName, sql, MigrationType.MIGRATION);
+                    } else {
+                        console.log("No migrations to run");
+                    }
+                    break;
                 case UserAction.RUN_ONE_ROLLBACK:
-                    const migration = await chooseMigration(migrations);
-                    const direction =
-                        action === UserAction.RUN_ONE_MIGRATION ? MigrationType.MIGRATION : MigrationType.ROLLBACK;
-                    await client.runMigration(migration, direction);
+                    migrations = await filterMigrations(client, migrations, MigrationType.ROLLBACK);
+                    migrationFolderName = await chooseMigration(migrations);
+                    if (migrationFolderName) {
+                        fileConfig = await getFileConfig(migrationFolderName, MigrationType.ROLLBACK);
+                        sql = readFileSync(
+                            path.join(
+                                fileConfig.migrationFolder,
+                                fileConfig.migrationName,
+                                fileConfig.migrationTypeFile,
+                            ),
+                            "utf-8",
+                        );
+
+                        await client.runMigration(fileConfig.migrationName, sql, MigrationType.ROLLBACK);
+                    } else {
+                        console.log("No migrations to run");
+                    }
                     break;
                 case UserAction.RUN_ALL:
-                    await client.runAllMigrations(migrations);
+                    migrations = await filterMigrations(client, migrations, MigrationType.MIGRATION);
+                    for (const m of migrations) {
+                        fileConfig = await getFileConfig(m, MigrationType.MIGRATION);
+                        sql = readFileSync(
+                            path.join(
+                                fileConfig.migrationFolder,
+                                fileConfig.migrationName,
+                                fileConfig.migrationTypeFile,
+                            ),
+                            "utf-8",
+                        );
+
+                        await client.runMigration(fileConfig.migrationName, sql, MigrationType.MIGRATION);
+                    }
                     break;
                 case UserAction.QUIT:
                     break;
