@@ -2,9 +2,9 @@ CREATE TYPE anime_type AS ENUM ('TV', 'TV Special', 'CM', 'OVA', 'Movie', 'Music
 
 CREATE TYPE anime_status AS ENUM ('Finished Airing', 'Currently Airing', 'Not yet aired');
 
-CREATE TYPE anime_rating AS ENUM ('R - 17+ (violence & profanity)', 'PG-13 - Teens 13 or older', 'PG - Children', 'R+ - Mild Nudity', 'G - All Ages', 'Rx - Hentai', 'Not Yet Rated');
+CREATE TYPE anime_rating AS ENUM ('R-17+', 'PG-13', 'PG', 'R+', 'G', 'Rx', 'Not Yet Rated');
 
-CREATE TYPE source_material AS ENUM ('Original', 'Manga', 'Light novel', 'Game', 'Visual novel', '4-koma manga', 'Novel', 'Other', 'Unknown', 'Picture book', 'Web manga', 'Music', 'Radio', 'Book', 'Mixed media', 'Card game', 'Web novel');
+CREATE TYPE source_material AS ENUM ('Original', 'Manga', 'Light novel', 'Game', 'Visual novel', 'Yonkoma', 'Novel', 'Other', 'Unknown', 'Picture book', 'Web manga', 'Music', 'Radio', 'Book', 'Mixed media', 'Card game', 'Web novel');
 
 CREATE TYPE anime_demographic AS ENUM ('Shounen', 'Josei', 'Seinen', 'Shoujo', 'Kids');
 

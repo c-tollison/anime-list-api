@@ -1,5 +1,4 @@
 import { Module } from "@nestjs/common";
-import { AnimeModule } from "./anime/anime.module";
 import { TypeOrmModule } from "@nestjs/typeorm";
 
 @Module({
@@ -14,7 +13,6 @@ import { TypeOrmModule } from "@nestjs/typeorm";
             database: "catolli",
             logging: true,
         }),
-        AnimeModule,
     ],
 })
 export class AppModule {}

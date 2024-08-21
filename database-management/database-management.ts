@@ -156,6 +156,34 @@ async function filterMigrations(client: DatabaseManager, migrations: string[], t
     });
 }
 
+async function getEnums(client: DatabaseManager): Promise<Map<string, string[]>> {
+    const unsortedEnums: { enum_schema: string; enum_name: string; enum_value: string }[] = (
+        await client.query(`SELECT 
+                                                n.nspname AS enum_schema,
+                                                t.typname AS enum_name,
+                                                e.enumlabel AS enum_value
+                                            FROM 
+                                                pg_type t
+                                            JOIN 
+                                                pg_enum e ON t.oid = e.enumtypid
+                                            JOIN 
+                                                pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+                                            WHERE 
+                                                n.nspname NOT IN ('pg_catalog', 'information_schema')
+                                            ORDER BY 
+                                                enum_schema, enum_name, e.enumsortorder`)
+    ).rows;
+
+    const enums: Map<string, string[]> = new Map();
+    for (const unsortedEnum of unsortedEnums) {
+        const prevValue = enums.get(unsortedEnum.enum_name);
+
+        enums.set(unsortedEnum.enum_name, [...(prevValue || []), unsortedEnum.enum_value]);
+    }
+
+    return enums;
+}
+
 async function runMigration(
     client: DatabaseManager,
     migrationFolderName: string,
@@ -168,6 +196,29 @@ async function runMigration(
     );
 
     await client.runMigration(fileConfig.migrationName, sql, migrationType);
+}
+
+async function writeEnumsToFiles(enums: Map<string, string[]>) {
+    const enumsDir = path.join("../src", "common", "enums");
+
+    for (const [key, values] of enums) {
+        const enumName = key
+            .split("_")
+            .map((string) => string.charAt(0).toUpperCase() + string.slice(1))
+            .join("");
+
+        const enumValues = values.map(
+            // Replace spaces with underscores and get rid of special characters
+            (value) => `${value.replace(/\s/g, "_").replace(/\W/g, "").toUpperCase()} = "${value}"`,
+        );
+
+        const enumContent = `export enum ${enumName} {\n    ${enumValues.join(",\n    ")},\n}\n`;
+
+        const fileName = `${enumName}.enum.ts`;
+        const filePath = path.join(enumsDir, fileName);
+
+        await writeFile(filePath, enumContent);
+    }
 }
 
 async function databaseManagement() {
@@ -191,6 +242,7 @@ async function databaseManagement() {
                     migrationFolderName = await chooseMigration(migrations);
                     if (migrationFolderName) {
                         await runMigration(client, migrationFolderName, MigrationType.MIGRATION);
+                        await writeEnumsToFiles(await getEnums(client));
                     } else {
                         console.log("No migrations to run");
                     }
@@ -200,6 +252,7 @@ async function databaseManagement() {
                     migrationFolderName = await chooseMigration(migrations);
                     if (migrationFolderName) {
                         await runMigration(client, migrationFolderName, MigrationType.ROLLBACK);
+                        await writeEnumsToFiles(await getEnums(client));
                     } else {
                         console.log("No migrations to run");
                     }
@@ -209,6 +262,7 @@ async function databaseManagement() {
                     for (const migrationName of migrations) {
                         await runMigration(client, migrationName, MigrationType.MIGRATION);
                     }
+                    await writeEnumsToFiles(await getEnums(client));
                     break;
                 case UserAction.QUIT:
                     break;
