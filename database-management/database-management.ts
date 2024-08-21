@@ -159,19 +159,19 @@ async function filterMigrations(client: DatabaseManager, migrations: string[], t
 async function getEnums(client: DatabaseManager): Promise<Map<string, string[]>> {
     const unsortedEnums: { enum_schema: string; enum_name: string; enum_value: string }[] = (
         await client.query(`SELECT 
-                                                n.nspname AS enum_schema,
-                                                t.typname AS enum_name,
-                                                e.enumlabel AS enum_value
-                                            FROM 
-                                                pg_type t
-                                            JOIN 
-                                                pg_enum e ON t.oid = e.enumtypid
-                                            JOIN 
-                                                pg_catalog.pg_namespace n ON n.oid = t.typnamespace
-                                            WHERE 
-                                                n.nspname NOT IN ('pg_catalog', 'information_schema')
-                                            ORDER BY 
-                                                enum_schema, enum_name, e.enumsortorder`)
+                                n.nspname AS enum_schema,
+                                t.typname AS enum_name,
+                                e.enumlabel AS enum_value
+                            FROM 
+                                pg_type t
+                            JOIN 
+                                pg_enum e ON t.oid = e.enumtypid
+                            JOIN 
+                                pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+                            WHERE 
+                                n.nspname NOT IN ('pg_catalog', 'information_schema')
+                            ORDER BY 
+                                enum_schema, enum_name, e.enumsortorder`)
     ).rows;
 
     const enums: Map<string, string[]> = new Map();
@@ -207,7 +207,7 @@ async function writeEnumsToFiles(enums: Map<string, string[]>) {
             .map((string) => string.charAt(0).toUpperCase() + string.slice(1))
             .join("");
 
-        const enumValues = values.map(
+        const enumValues = values.sort().map(
             // Replace spaces with underscores and get rid of special characters
             (value) => `${value.replace(/\s/g, "_").replace(/\W/g, "").toUpperCase()} = "${value}"`,
         );

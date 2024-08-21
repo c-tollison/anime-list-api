@@ -1,9 +1,9 @@
 export enum AnimeRating {
-    R17 = "R-17+",
-    PG13 = "PG-13",
-    PG = "PG",
-    R = "R+",
     G = "G",
-    RX = "Rx",
     NOT_YET_RATED = "Not Yet Rated",
+    PG = "PG",
+    PG13 = "PG-13",
+    R = "R+",
+    R17 = "R-17+",
+    RX = "Rx",
 }

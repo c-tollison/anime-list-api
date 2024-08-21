@@ -1,7 +1,7 @@
 export enum AnimeDemographic {
-    SHOUNEN = "Shounen",
     JOSEI = "Josei",
+    KIDS = "Kids",
     SEINEN = "Seinen",
     SHOUJO = "Shoujo",
-    KIDS = "Kids",
+    SHOUNEN = "Shounen",
 }

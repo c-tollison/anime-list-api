@@ -1,12 +1,12 @@
 export enum AnimeType {
-    TV = "TV",
-    TV_SPECIAL = "TV Special",
     CM = "CM",
-    OVA = "OVA",
     MOVIE = "Movie",
     MUSIC = "Music",
     ONA = "ONA",
+    OVA = "OVA",
     PV = "PV",
     SPECIAL = "Special",
+    TV = "TV",
+    TV_SPECIAL = "TV Special",
     UNKNOWN = "Unknown",
 }
