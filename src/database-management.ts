@@ -16,6 +16,8 @@ enum UserAction {
 
 type UserActionType = UserAction | null;
 
+const MIGRATIONS_FOLDER = path.join(__dirname, MIGRATIONS_FILE_PATH);
+
 interface FileConfig {
     migrationFolder: string;
     migrationName: string;
@@ -24,7 +26,7 @@ interface FileConfig {
 
 async function getDatabaseManager(): Promise<DatabaseManager> {
     try {
-        const config = await readConfig(CONFIG_FILE_PATH);
+        const config = await readConfig(path.join(__dirname, CONFIG_FILE_PATH));
         return new DatabaseManager(config);
     } catch (error) {
         console.error("Failed to connect to the database:", error);
@@ -71,8 +73,8 @@ async function createMigrationFile() {
         });
 
         const timestamp = Math.floor(Date.now() / 1000);
-        const migrationFolder = `${timestamp}-${fileDescription.replace(/\s+/g, "-")}`;
-        const migrationPath = path.join(MIGRATIONS_FILE_PATH, migrationFolder);
+        const migrationFile = `${timestamp}-${fileDescription.replace(/\s+/g, "-")}`;
+        const migrationPath = path.join(MIGRATIONS_FOLDER, migrationFile);
 
         await mkdir(migrationPath, { recursive: true });
 
@@ -82,7 +84,7 @@ async function createMigrationFile() {
         await writeFile(migrationFilePath, "");
         await writeFile(rollbackFilePath, "");
 
-        console.log(`Created migration files in folder: ${migrationFolder}`);
+        console.log(`Created migration files in folder: ${migrationFile}`);
         console.log(`  - ${MIGRATION_FILE_NAME}`);
         console.log(`  - ${ROLLBACK_FILE_NAME}`);
     } catch (error) {
@@ -93,7 +95,7 @@ async function createMigrationFile() {
 
 async function readMigrations(): Promise<string[]> {
     try {
-        const folders = await readdir(MIGRATIONS_FILE_PATH);
+        const folders = await readdir(MIGRATIONS_FOLDER);
         folders.sort((a, b) => {
             const firstTime = Number(a.slice(0, 10));
             const secondTime = Number(b.slice(0, 10));
@@ -109,7 +111,7 @@ async function readMigrations(): Promise<string[]> {
 
         return folders;
     } catch (error) {
-        throw new Error(`Failed to read from ${MIGRATIONS_FILE_PATH}`);
+        throw new Error(`Failed to read from ${MIGRATIONS_FOLDER}`);
     }
 }
 
@@ -137,7 +139,7 @@ async function chooseMigration(migrations: string[]): Promise<string | null> {
 
 async function getFileConfig(migrationFolderName: string, type: MigrationType): Promise<FileConfig> {
     return {
-        migrationFolder: MIGRATIONS_FILE_PATH,
+        migrationFolder: MIGRATIONS_FOLDER,
         migrationName: migrationFolderName,
         migrationTypeFile: type === MigrationType.MIGRATION ? MIGRATION_FILE_NAME : ROLLBACK_FILE_NAME,
     };
@@ -199,7 +201,7 @@ async function runMigration(
 }
 
 async function writeEnumsToFiles(enums: Map<string, string[]>) {
-    const enumsDir = path.join("../src", "common", "enums");
+    const enumsDir = path.join(__dirname, "enums");
 
     for (const [key, values] of enums) {
         const enumName = key

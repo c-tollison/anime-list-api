@@ -44,7 +44,7 @@ export class DatabaseManager {
         try {
             return await this.client.query(queryString, queryArray);
         } catch (error) {
-            throw new Error(`Failed to run query: ` + queryArray);
+            throw new Error(`Failed to run query: ` + queryArray + error);
         }
     }
 
